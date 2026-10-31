@@ -51,7 +51,7 @@ def color_change(val):
 
 if not df.empty:
  st.dataframe(df, use_container_width=True)
-    st.success(f"Total {len(df)} stocks loaded | Auto refresh: 90 sec")
+st.success(f"Total {len(df)} stocks loaded | Auto refresh: 90 sec")
 else:
     st.error("Data nahi aaya, Refresh kijiye")
 

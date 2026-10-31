@@ -1,64 +1,84 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
+import numpy as np
 
-st.set_page_config(page_title="Nifty50 SOM 2026", layout="wide")
-st.title("Nifty50 - All 50 Stocks Dashboard")
-st.caption("SOM SHEKHAR 2026 | Laptop OFF me bhi chalega | Tab Ready")
+st.set_page_config(page_title="Nifty50 SOM Pro", layout="wide")
+st.title("Nifty50 Dashboard - SOM SHEKHAR 2026")
+st.caption("CMP | Daily RSI | Weekly RSI | Bullish/Bearish | 52W High Low")
 
-# NIFTY 50 - Pure 50 stocks (Oct 2026 list)
-NIFTY50 = [
-    "ADANIENT.NS", "ADANIPORTS.NS", "APOLLOHOSP.NS", "ASIANPAINT.NS", "AXISBANK.NS",
-    "BAJAJ-AUTO.NS", "BAJAJFINSV.NS", "BAJFINANCE.NS", "BEL.NS", "BHARTIARTL.NS",
-    "BSE.NS", "CIPLA.NS", "COALINDIA.NS", "DRREDDY.NS", "EICHERMOT.NS",
-    "ETERNAL.NS", "GRASIM.NS", "HCLTECH.NS", "HDFCBANK.NS", "HDFCLIFE.NS",
-    "HINDALCO.NS", "HINDUNILVR.NS", "ICICIBANK.NS", "INDIGO.NS", "INFY.NS",
-    "ITC.NS", "JSWSTEEL.NS", "KOTAKBANK.NS", "LT.NS", "M&M.NS",
-    "MARUTI.NS", "NESTLEIND.NS", "NTPC.NS", "ONGC.NS", "POWERGRID.NS",
-    "RELIANCE.NS", "SBILIFE.NS", "SBIN.NS", "SHRIRAMFIN.NS", "SUNPHARMA.NS",
-    "TATACONSUM.NS", "TATAMOTORS.NS", "TATASTEEL.NS", "TECHM.NS", "TITAN.NS",
-    "TRENT.NS", "ULTRACEMCO.NS", "WIPRO.NS", "HEROMOTOCO.NS", "INDUSINDBK.NS"
-]
+# Nifty 50 stocks
+STOCKS = ["ADANIENT.NS","ADANIPORTS.NS","APOLLOHOSP.NS","ASIANPAINT.NS","AXISBANK.NS","BAJAJ-AUTO.NS","BAJAJFINSV.NS","BAJFINANCE.NS","BEL.NS","BHARTIARTL.NS","CIPLA.NS","COALINDIA.NS","DRREDDY.NS","EICHERMOT.NS","ETERNAL.NS","GRASIM.NS","HCLTECH.NS","HDFCBANK.NS","HDFCLIFE.NS","HINDALCO.NS","HINDUNILVR.NS","ICICIBANK.NS","INDIGO.NS","INFY.NS","ITC.NS","JSWSTEEL.NS","KOTAKBANK.NS","LT.NS","M&M.NS","MARUTI.NS","NESTLEIND.NS","NTPC.NS","ONGC.NS","POWERGRID.NS","RELIANCE.NS","SBILIFE.NS","SBIN.NS","SHRIRAMFIN.NS","SUNPHARMA.NS","TATACONSUM.NS","TATAMOTORS.NS","TATASTEEL.NS","TECHM.NS","TITAN.NS","TRENT.NS","ULTRACEMCO.NS","WIPRO.NS","HEROMOTOCO.NS","INDUSINDBK.NS"]
 
-@st.cache_data(ttl=90)
-def get_all_data():
-    data = []
-    for sym in NIFTY50:
+def calc_rsi(series, period=14):
+    delta = series.diff()
+    gain = delta.where(delta > 0, 0).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    rs = gain / loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
+
+@st.cache_data(ttl=300)
+def get_data():
+    rows = []
+    for sym in STOCKS:
         try:
             tk = yf.Ticker(sym)
-            h = tk.history(period="5d")
-            if not h.empty:
-                cmp_price = h['Close'].iloc[-1]
-                prev = h['Close'].iloc[-2] if len(h) > 1 else cmp_price
-                chg = ((cmp_price - prev)/prev)*100
-                data.append({
-                    "Stock": sym.replace(".NS",""),
-                    "CMP": round(float(cmp_price),2),
-                    "Change %": round(float(chg),2)
-                })
+            daily = tk.history(period="1y")
+            if daily.empty: continue
+            
+            weekly = daily['Close'].resample('W').last()
+            
+            d_rsi = calc_rsi(daily['Close']).iloc[-1]
+            w_rsi = calc_rsi(weekly).iloc[-1]
+            
+            cmp_price = daily['Close'].iloc[-1]
+            high_52 = daily['High'].max()
+            low_52 = daily['Low'].min()
+            
+            # Logic aapke hisab se
+            if d_rsi > 60 and w_rsi > 60:
+                signal = "🟢 BULLISH"
+            elif d_rsi < 40 and w_rsi < 40:
+                signal = "🔴 BEARISH"
+            elif 40 <= d_rsi <= 60 and 40 <= w_rsi <= 60:
+                signal = "🟡 NEUTRAL"
+            else:
+                signal = "⚪ NEUTRAL"
+            
+            rows.append({
+                "Stock": sym.replace(".NS",""),
+                "CMP": round(cmp_price,2),
+                "Daily RSI": round(d_rsi,1),
+                "Weekly RSI": round(w_rsi,1),
+                "Signal": signal,
+                "52W High": round(high_52,2),
+                "52W Low": round(low_52,2)
+            })
         except:
-            data.append({"Stock": sym.replace(".NS",""), "CMP": "NA", "Change %": 0})
-    return pd.DataFrame(data)
+            continue
+    return pd.DataFrame(rows)
 
-with st.spinner("Nifty 50 data load ho raha hai..."):
-    df = get_all_data()
-
-# Color coding
-def color_change(val):
-    if isinstance(val, (int, float)):
-        return 'color: green' if val > 0 else 'color: red'
-    return ''
+with st.spinner("50 stocks ka data + RSI nikal raha hun... 1 min lagega"):
+    df = get_data()
 
 if not df.empty:
- st.dataframe(df, use_container_width=True)
-st.success(f"Total {len(df)} stocks loaded | Auto refresh: 90 sec")
-else:
-    st.error("Data nahi aaya, Refresh kijiye")
+    # Filter
+    f = st.selectbox("Filter:", ["All","BULLISH Only","BEARISH Only","NEUTRAL Only"])
+    if f == "BULLISH Only":
+        df = df[df['Signal'].str.contains("BULLISH")]
+    elif f == "BEARISH Only":
+        df = df[df['Signal'].str.contains("BEARISH")]
+    elif f == "NEUTRAL Only":
+        df = df[df['Signal'].str.contains("NEUTRAL")]
 
-col1, col2 = st.columns(2)
-with col1:
-    if st.button("🔄 Refresh Now"):
-        st.cache_data.clear()
-        st.rerun()
-with col2:
-    st.download_button("Download CSV", df.to_csv(index=False), "nifty50_som_2026.csv")
+    st.dataframe(df, use_container_width=True, height=800)
+    st.success(f"Total {len(df)} stocks loaded")
+else:
+    st.error("Data load nahi hua")
+
+if st.button("Refresh"):
+    st.cache_data.clear()
+    st.rerun()
+
+st.download_button("Download CSV", df.to_csv(index=False), "nifty50_rsi_dashboard.csv")

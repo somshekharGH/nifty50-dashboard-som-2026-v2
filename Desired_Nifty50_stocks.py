@@ -7,7 +7,7 @@ st.title("Nifty50 Dashboard - SOM SHEKHAR 2026")
 st.write("Laptop OFF rahega tab bhi yaha data dikhega")
 
 # Aapke desired stocks - yaha aap apne stocks add kar sakte hain
-    STOCKS = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ICICIBANK.NS", "SBIN.NS", "ITC.NS", "LT.NS", "AXISBANK.NS", "KOTAKBANK.NS", "BAJFINANCE.NS", "MARUTI.NS", "SUNPHARMA.NS", "WIPRO.NS", "ULTRACEMCO.NS", "TITAN.NS", "ONGC.NS", "NTPC.NS", "POWERGRID.NS", "M&M.NS", "TATASTEEL.NS", "HCLTECH.NS", "BAJAJFINSV.NS", "ADANIENT.NS", "ADANIPORTS.NS"]
+STOCKS = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ICICIBANK.NS", "SBIN.NS", "ITC.NS", "LT.NS", "AXISBANK.NS", "KOTAKBANK.NS", "BAJFINANCE.NS", "MARUTI.NS", "SUNPHARMA.NS", "WIPRO.NS", "ULTRACEMCO.NS", "TITAN.NS", "ONGC.NS", "NTPC.NS", "POWERGRID.NS", "M&M.NS", "TATASTEEL.NS", "HCLTECH.NS", "BAJAJFINSV.NS", "ADANIENT.NS", "ADANIPORTS.NS"]
 @st.cache_data(ttl=60)
 def get_nifty_data():
     rows = []

@@ -50,7 +50,7 @@ def color_change(val):
     return ''
 
 if not df.empty:
-    st.dataframe(df.style.applymap(color_change, subset=['Change %']), use_container_width=True, height=800)
+ st.dataframe(df, use_container_width=True)
     st.success(f"Total {len(df)} stocks loaded | Auto refresh: 90 sec")
 else:
     st.error("Data nahi aaya, Refresh kijiye")

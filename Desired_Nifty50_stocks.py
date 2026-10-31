@@ -1,14 +1,13 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-import numpy as np
 
-st.set_page_config(page_title="Nifty50 SOM Pro", layout="wide")
-st.title("Nifty50 Dashboard - SOM SHEKHAR 2026")
-st.caption("CMP | Daily RSI | Weekly RSI | Bullish/Bearish | 52W High Low")
+st.set_page_config(page_title="Nifty50 SOM Dashboard", layout="wide")
 
-# Nifty 50 stocks
-STOCKS = ["ADANIENT.NS","ADANIPORTS.NS","APOLLOHOSP.NS","ASIANPAINT.NS","AXISBANK.NS","BAJAJ-AUTO.NS","BAJAJFINSV.NS","BAJFINANCE.NS","BEL.NS","BHARTIARTL.NS","CIPLA.NS","COALINDIA.NS","DRREDDY.NS","EICHERMOT.NS","ETERNAL.NS","GRASIM.NS","HCLTECH.NS","HDFCBANK.NS","HDFCLIFE.NS","HINDALCO.NS","HINDUNILVR.NS","ICICIBANK.NS","INDIGO.NS","INFY.NS","ITC.NS","JSWSTEEL.NS","KOTAKBANK.NS","LT.NS","M&M.NS","MARUTI.NS","NESTLEIND.NS","NTPC.NS","ONGC.NS","POWERGRID.NS","RELIANCE.NS","SBILIFE.NS","SBIN.NS","SHRIRAMFIN.NS","SUNPHARMA.NS","TATACONSUM.NS","TATAMOTORS.NS","TATASTEEL.NS","TECHM.NS","TITAN.NS","TRENT.NS","ULTRACEMCO.NS","WIPRO.NS","HEROMOTOCO.NS","INDUSINDBK.NS"]
+st.markdown("<h1 style='text-align:center;color:#0d47a1;'>Nifty50 - SOM SHEKHAR 2026</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center;'>CMP | Daily RSI | Weekly RSI | Bullish/Bearish | 52W High Low</p>", unsafe_allow_html=True)
+
+STOCKS = ["RELIANCE.NS","TCS.NS","INFY.NS","HDFCBANK.NS","ICICIBANK.NS","SBIN.NS","BHARTIARTL.NS","ITC.NS","LT.NS","AXISBANK.NS","KOTAKBANK.NS","BAJFINANCE.NS","MARUTI.NS","SUNPHARMA.NS","WIPRO.NS","ULTRACEMCO.NS","TITAN.NS","ONGC.NS","NTPC.NS","POWERGRID.NS","M&M.NS","TATASTEEL.NS","HCLTECH.NS","BAJAJFINSV.NS","ADANIENT.NS","ADANIPORTS.NS","ASIANPAINT.NS","NESTLEIND.NS","GRASIM.NS","JSWSTEEL.NS","HINDALCO.NS","CIPLA.NS","DRREDDY.NS","EICHERMOT.NS","BRITANNIA.NS","DIVISLAB.NS","HINDUNILVR.NS","SBILIFE.NS","HDFCLIFE.NS","COALINDIA.NS","BAJAJ-AUTO.NS","HEROMOTOCO.NS","INDUSINDBK.NS","TATAMOTORS.NS","TATACONSUM.NS","TECHM.NS","APOLLOHOSP.NS","BEL.NS","TRENT.NS"]
 
 def calc_rsi(series, period=14):
     delta = series.diff()
@@ -18,67 +17,45 @@ def calc_rsi(series, period=14):
     rsi = 100 - (100 / (1 + rs))
     return rsi
 
-@st.cache_data(ttl=300)
-def get_data():
-    rows = []
-    for sym in STOCKS:
+@st.cache_data(ttl=600)
+def load():
+    data = []
+    for s in STOCKS:
         try:
-            tk = yf.Ticker(sym)
-            daily = tk.history(period="1y")
-            if daily.empty: continue
-            
-            weekly = daily['Close'].resample('W').last()
-            
-            d_rsi = calc_rsi(daily['Close']).iloc[-1]
-            w_rsi = calc_rsi(weekly).iloc[-1]
-            
-            cmp_price = daily['Close'].iloc[-1]
-            high_52 = daily['High'].max()
-            low_52 = daily['Low'].min()
-            
-            # Logic aapke hisab se
+            hist = yf.Ticker(s).history(period="1y")
+            if len(hist) < 20: continue
+            weekly_close = hist['Close'].resample('W').last()
+            d_rsi = calc_rsi(hist['Close']).iloc[-1]
+            w_rsi = calc_rsi(weekly_close).iloc[-1]
+            cmp = hist['Close'].iloc[-1]
+            high = hist['High'].max()
+            low = hist['Low'].min()
             if d_rsi > 60 and w_rsi > 60:
-                signal = "🟢 BULLISH"
+                sig = "🟢 BULLISH"
             elif d_rsi < 40 and w_rsi < 40:
-                signal = "🔴 BEARISH"
-            elif 40 <= d_rsi <= 60 and 40 <= w_rsi <= 60:
-                signal = "🟡 NEUTRAL"
+                sig = "🔴 BEARISH"
             else:
-                signal = "⚪ NEUTRAL"
-            
-            rows.append({
-                "Stock": sym.replace(".NS",""),
-                "CMP": round(cmp_price,2),
-                "Daily RSI": round(d_rsi,1),
-                "Weekly RSI": round(w_rsi,1),
-                "Signal": signal,
-                "52W High": round(high_52,2),
-                "52W Low": round(low_52,2)
-            })
+                sig = "⚪ NEUTRAL"
+            data.append([s.replace(".NS",""), round(cmp,2), round(d_rsi,1), round(w_rsi,1), sig, round(high,2), round(low,2)])
         except:
             continue
-    return pd.DataFrame(rows)
+    df = pd.DataFrame(data, columns=["Stock","CMP","Daily RSI","Weekly RSI","Signal","52W High","52W Low"])
+    return df
 
-with st.spinner("50 stocks ka data + RSI nikal raha hun... 1 min lagega"):
-    df = get_data()
+df = load()
 
-if not df.empty:
-    # Filter
-    f = st.selectbox("Filter:", ["All","BULLISH Only","BEARISH Only","NEUTRAL Only"])
-    if f == "BULLISH Only":
-        df = df[df['Signal'].str.contains("BULLISH")]
-    elif f == "BEARISH Only":
-        df = df[df['Signal'].str.contains("BEARISH")]
-    elif f == "NEUTRAL Only":
-        df = df[df['Signal'].str.contains("NEUTRAL")]
+# Top Counts
+c1,c2,c3,c4 = st.columns(4)
+c1.metric("Total Stocks", len(df))
+c2.metric("Bullish", len(df[df['Signal'].str.contains("BULLISH")]))
+c3.metric("Bearish", len(df[df['Signal'].str.contains("BEARISH")]))
+c4.metric("Neutral", len(df[df['Signal'].str.contains("NEUTRAL")]))
 
-    st.dataframe(df, use_container_width=True, height=800)
-    st.success(f"Total {len(df)} stocks loaded")
-else:
-    st.error("Data load nahi hua")
+# Filter
+choice = st.selectbox("Filter karo:", ["All","BULLISH","BEARISH","NEUTRAL"])
+if choice != "All":
+    df = df[df['Signal'].str.contains(choice)]
 
-if st.button("Refresh"):
-    st.cache_data.clear()
-    st.rerun()
+st.dataframe(df, use_container_width=True, height=700)
 
-st.download_button("Download CSV", df.to_csv(index=False), "nifty50_rsi_dashboard.csv")
+st.button("Refresh Data")

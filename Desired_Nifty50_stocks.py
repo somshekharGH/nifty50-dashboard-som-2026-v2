@@ -2,35 +2,63 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 
-st.set_page_config(page_title="Nifty50 SOM Dashboard", layout="wide")
-st.title("Nifty50 Dashboard - SOM SHEKHAR 2026")
-st.write("Laptop OFF rahega tab bhi yaha data dikhega")
+st.set_page_config(page_title="Nifty50 SOM 2026", layout="wide")
+st.title("Nifty50 - All 50 Stocks Dashboard")
+st.caption("SOM SHEKHAR 2026 | Laptop OFF me bhi chalega | Tab Ready")
 
-# Aapke desired stocks - yaha aap apne stocks add kar sakte hain
-STOCKS = ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ICICIBANK.NS", "SBIN.NS", "ITC.NS", "LT.NS", "AXISBANK.NS", "KOTAKBANK.NS", "BAJFINANCE.NS", "MARUTI.NS", "SUNPHARMA.NS", "WIPRO.NS", "ULTRACEMCO.NS", "TITAN.NS", "ONGC.NS", "NTPC.NS", "POWERGRID.NS", "M&M.NS", "TATASTEEL.NS", "HCLTECH.NS", "BAJAJFINSV.NS", "ADANIENT.NS", "ADANIPORTS.NS"]
-@st.cache_data(ttl=60)
-def get_nifty_data():
-    rows = []
-    for symbol in STOCKS:
+# NIFTY 50 - Pure 50 stocks (Oct 2026 list)
+NIFTY50 = [
+    "ADANIENT.NS", "ADANIPORTS.NS", "APOLLOHOSP.NS", "ASIANPAINT.NS", "AXISBANK.NS",
+    "BAJAJ-AUTO.NS", "BAJAJFINSV.NS", "BAJFINANCE.NS", "BEL.NS", "BHARTIARTL.NS",
+    "BSE.NS", "CIPLA.NS", "COALINDIA.NS", "DRREDDY.NS", "EICHERMOT.NS",
+    "ETERNAL.NS", "GRASIM.NS", "HCLTECH.NS", "HDFCBANK.NS", "HDFCLIFE.NS",
+    "HINDALCO.NS", "HINDUNILVR.NS", "ICICIBANK.NS", "INDIGO.NS", "INFY.NS",
+    "ITC.NS", "JSWSTEEL.NS", "KOTAKBANK.NS", "LT.NS", "M&M.NS",
+    "MARUTI.NS", "NESTLEIND.NS", "NTPC.NS", "ONGC.NS", "POWERGRID.NS",
+    "RELIANCE.NS", "SBILIFE.NS", "SBIN.NS", "SHRIRAMFIN.NS", "SUNPHARMA.NS",
+    "TATACONSUM.NS", "TATAMOTORS.NS", "TATASTEEL.NS", "TECHM.NS", "TITAN.NS",
+    "TRENT.NS", "ULTRACEMCO.NS", "WIPRO.NS", "HEROMOTOCO.NS", "INDUSINDBK.NS"
+]
+
+@st.cache_data(ttl=90)
+def get_all_data():
+    data = []
+    for sym in NIFTY50:
         try:
-            t = yf.Ticker(symbol)
-            hist = t.history(period="2d")
-            if len(hist) >= 1:
-                cmp = hist['Close'].iloc[-1]
-                prev = hist['Close'].iloc[-2] if len(hist) > 1 else cmp
-                change = ((cmp - prev)/prev)*100
-                rows.append({"Stock": symbol.replace(".NS",""), "CMP": round(cmp,2), "Change %": round(change,2)})
+            tk = yf.Ticker(sym)
+            h = tk.history(period="5d")
+            if not h.empty:
+                cmp_price = h['Close'].iloc[-1]
+                prev = h['Close'].iloc[-2] if len(h) > 1 else cmp_price
+                chg = ((cmp_price - prev)/prev)*100
+                data.append({
+                    "Stock": sym.replace(".NS",""),
+                    "CMP": round(float(cmp_price),2),
+                    "Change %": round(float(chg),2)
+                })
         except:
-            pass
-    return pd.DataFrame(rows)
+            data.append({"Stock": sym.replace(".NS",""), "CMP": "NA", "Change %": 0})
+    return pd.DataFrame(data)
 
-df = get_nifty_data()
+with st.spinner("Nifty 50 data load ho raha hai..."):
+    df = get_all_data()
+
+# Color coding
+def color_change(val):
+    if isinstance(val, (int, float)):
+        return 'color: green' if val > 0 else 'color: red'
+    return ''
+
 if not df.empty:
-    st.dataframe(df, use_container_width=True)
-    st.success(f"Last Updated - Auto Refresh har 1 min me")
+    st.dataframe(df.style.applymap(color_change, subset=['Change %']), use_container_width=True, height=800)
+    st.success(f"Total {len(df)} stocks loaded | Auto refresh: 90 sec")
 else:
-    st.error("Data load nahi hua, thodi der baad refresh kijiye")
+    st.error("Data nahi aaya, Refresh kijiye")
 
-if st.button("Refresh Now"):
-    st.cache_data.clear()
-    st.rerun()
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("🔄 Refresh Now"):
+        st.cache_data.clear()
+        st.rerun()
+with col2:
+    st.download_button("Download CSV", df.to_csv(index=False), "nifty50_som_2026.csv")
